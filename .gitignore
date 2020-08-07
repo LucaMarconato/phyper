@@ -1,0 +1,5 @@
+	.idea/
+	Phyper.egg-info/
+	phyper/__pycache__/
+	test/__pycache__/
+	venv/
