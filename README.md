@@ -1,4 +1,4 @@
-# phyper
+# Phyper
 A machine learning pipeline trains models depending on many hyperparamters, and precomputes intermediate resources which depend on a subset of all the hyperparameters. Some hyperparameters should define a unique model, while others are required to be specified for running the pipeline but should not lead to different storage of intermediate resources or model outputs. 
 
 This library simplifies the usage of hyperparameters within pipelines.
