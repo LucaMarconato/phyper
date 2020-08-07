@@ -4,7 +4,7 @@ A machine learning pipeline trains models depending on many hyperparamters, and 
 This library simplifies the usage of hyperparameters within pipelines.
 
 Features:
-* easy syntax defining hyperparameters
+* easy syntax for defining hyperparameters
 * use hyperparameters in any point within a pipeline
 * IDE-enabled code completion (tested with PyCharm)
 * generating hashes for final outputs and intermediate resources to avoid redundant computations or resource clashing between different models; the hashes depend on a predefined subset of hyperparameters
