@@ -1,101 +1,114 @@
-import sys
 import os
-import pprint
-
-this = sys.modules[__name__]
-this.hashed_resources_folder = None
-this.hyperparameters = dict()
-this.is_key = dict()
-this.no_instance_defined_yet = True
-this.parser = None
-
-
-def set_hashed_resources_folder(path):
-    if this.hashed_resources_folder is None:
-        this.hashed_resources_folder = path
-        os.makedirs(this.hashed_resources_folder, exist_ok=True)
-    else:
-        if path != this.hashed_resources_folder:
-            raise RuntimeError(path, this.hashed_resources_folder)
-
-
-def new_hyperparameter(name: str, is_key: bool, default_value=None):
-    assert this.no_instance_defined_yet is True
-    if name in this.hyperparameters.keys():
-        raise RuntimeError(f'{name} already defined')
-    else:
-        this.is_key[name] = is_key
-        this.hyperparameters[name] = default_value
-
-
-def print_hyperparameters():
-    pprint.pprint(this.hyperparameters)
+import hashlib
+from collections import OrderedDict
+from typing import List, Optional
+import pandas as pd
+import colorama
 
 
 class Parser:
-    def __init__(self):
-        self.hyperparameters = dict()
-        self.is_key = dict()
-
-    def new_hyperparameter(self, name: str, is_key: bool, default_value=None):
-        if name in self.hyperparameters.keys():
-            raise RuntimeError(f'{name} already defined')
-        else:
-            self.is_key[name] = is_key
-            self.hyperparameters[name] = default_value
+    def __init__(self, hashed_resources_folder: str):
+        self._hashed_resources_folder = hashed_resources_folder
+        os.makedirs(self._hashed_resources_folder, exist_ok=True)
+        self._models_folder = os.path.join(self._hashed_resources_folder, 'all')
+        os.makedirs(self._models_folder, exist_ok=True)
+        self._is_parser = True
+        self._dependencies = {}
+        self._parser = None
 
     def new_instance(self):
-        instance = ParsedInstance()
-        for name, value in self.hyperparameters.items():
-            setattr(instance, name, value)
-        d = self.get_hyperparameters()
+        instance = self.__new__(type(self))
+        instance._is_parser = False
+        instance._parser = self
+        d = self.get_hyperparameters(calling_from_pure_parser=True)
         for k, v in d.items():
             setattr(instance, k, v)
         return instance
 
-    def get_hyperparameters(self):
+    def get_hyperparameters(self, calling_from_pure_parser=False):
         keys = dir(self)
-        keys = [key for key in keys if key not in self.__dict__]
-        keys = [key for key in keys if not hasattr(Parser, key)]
+        if calling_from_pure_parser:
+            keys = [key for key in keys if key not in self.__dict__]
+            keys = [key for key in keys if not hasattr(Parser, key)]
+        keys = [key for key in keys if not callable(getattr(self, key))]
         keys = [key for key in keys if not key.startswith('_')]
         values = [getattr(self, key) for key in keys]
         d = dict(zip(keys, values))
         return d
 
+    def get_hashable_hyperparameters(self):
+        d = self.get_hyperparameters()
+        hashable_hyperparameters = set(type(self).__dict__.keys()).intersection(d.keys())
+        return hashable_hyperparameters
 
-class ParsedInstance():
-    pass
-    # def __eq__(self, other):
-    #     if not isinstance(other, ParsedInstance):
-    #         return NotImplemented
-    #     return vars(self) == vars(other)
+    def get_instance_hash(self, resource_name: Optional[str] = None):
+        assert self._is_parser is False
+        h = hashlib.sha256()
+        keys = self.get_hashable_hyperparameters()
+        d = self.get_hyperparameters()
+        od = OrderedDict(sorted({k: d[k] for k in keys}.items()))
+        for k, v in od.items():
+            use_hash = True
+            if resource_name is not None:
+                dependencies = self._parser._dependencies[resource_name]
+                if k not in dependencies:
+                    use_hash = False
+            if use_hash:
+                h.update(str(k).encode('utf-8'))
+                h.update(str(v).encode('utf-8'))
+        hd = h.hexdigest()
 
-    # def __contains__(self, key):
-    #     return key in self.__dict__
+        if resource_name is None:
+            hash_folder = os.path.join(self._parser._models_folder, hd)
+        else:
+            hash_folder = os.path.join(self._parser._hashed_resources_folder, resource_name, hd)
+        os.makedirs(hash_folder, exist_ok=True)
+        return hd
 
+    def register_new_resource(self, name: str, dependencies: List[str]):
+        assert self._is_parser is True
+        l = self.get_hashable_hyperparameters()
+        for k in dependencies:
+            assert k in l
+        self._dependencies[name] = dependencies
+        path = os.path.join(self._hashed_resources_folder, name)
+        os.makedirs(path, exist_ok=True)
 
-class Instance:
-    def __init__(self):
-        this.no_instance_defined_yet = False
-        for name, value in this.hyperparameters.items():
-            setattr(self, name, value)
+    def get_dependencies_for_resources(self, name: str):
+        assert self._is_parser is True
+        return self._dependencies[name]
 
+    def get_resources_path(self, resource_name: Optional[str] = None):
+        if self._is_parser:
+            parser = self
+        else:
+            parser = self._parser
+        if resource_name is None:
+            return os.path.join(parser._models_folder, self.get_instance_hash())
+        else:
+            return os.path.join(parser._hashed_resources_folder, resource_name, self.get_instance_hash(resource_name))
 
-def set_hyperparameters(parser: Parser):
-    d = parser.get_hyperparameters()
-    for k, v in d.items():
-        new_hyperparameter(k, False, v)
+    @staticmethod
+    def cartesian_product(d):
+        index = pd.MultiIndex.from_product(d.values(), names=d.keys())
+        return pd.DataFrame(index=index).reset_index()
 
+    def get_instances_from_df(self, df):
+        assert self._is_parser is True
+        instances = []
+        for _, row in df.iterrows():
+            instance = self.new_instance()
+            d = row.to_dict()
+            for k, v in d.items():
+                setattr(instance, k, v)
+            instances.append(instance)
+        hashes = [instance.get_instance_hash() for instance in instances]
+        if len(hashes) != len(set(hashes)):
+            print(f'{colorama.Fore.YELLOW}warning: some instances differ only by non-hashable parameters, review your '
+                  f'list to avoid unnecessary computations', colorama.Fore.RESET)
+        return instances
 
-def set_parser(parser: Parser):
-    assert this.parser is None
-    this.parser = parser
-
-def new_parsed_instance():
-    assert this.parser is not None
-    instance = this.parser.new_instance()
-    return instance
-
-def new_instance():
-    instance = Instance()
-    return instance
+    def get_instances_from_dictionary(self, d):
+        assert self._is_parser is True
+        df = self.cartesian_product(d)
+        return self.get_instances_from_df(df)

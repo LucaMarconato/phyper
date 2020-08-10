@@ -4,8 +4,8 @@ A machine learning pipeline trains models depending on many hyperparamters, and 
 This library simplifies the usage of hyperparameters within pipelines.
 
 Features:
-* easy syntax for defining hyperparameters
-* use hyperparameters in any point within a pipeline
-* IDE-enabled code completion (tested with PyCharm)
+* easy, convenient syntax for defining hyperparameters
+* use hyperparameters in any point within a pipeline, from data preprocessing to the final ML model
+* IDE-enabled code completion for hyperparameters (tested with PyCharm)
 * generating hashes for final outputs and intermediate resources to avoid redundant computations or resource clashing between different models; the hashes depend on a predefined subset of hyperparameters
 * helper functions for using Snakemake as a pipeline manager

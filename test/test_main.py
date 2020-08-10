@@ -1,61 +1,41 @@
 import phyper
-from test.test_import import print_hyperparameters, print_hyperparameters2, print_instances
-
-phyper.set_hashed_resources_folder('hashed_resources')
-phyper.new_hyperparameter('test', is_key=False)
-phyper.new_hyperparameter('a', is_key=True, default_value=2)
-
-# instance = phyper.Instance()
-# print(f'instance.a = {instance.a}')
-# print(f'vars(instance) = {vars(instance)}')
-
-import argparse
+from typing import List
+from pprint import pprint
+import pandas as pd
 
 
-# parser = argparse.ArgumentParser()
-# parser.add_argument('--test', type=int, default=0, required=False)
-# args = parser.parse_args()
-# print(args.test)
-# print(args.testa)
-
-class MyPharser(phyper.Parser):
-    my_test = 2
-    ehi = 3
-
-
-class NonKeys(phyper.Parser):
-    epochs = 10
+class NonKeys:
+    n_epochs = 11
     batch_size = 10
+    resume_training = False
+    another_non_key = True
 
 
-# pharser = phyper.Parser()
-# pharser.new_hyperparameter('test', is_key=True, default_value=4)
-# instance = pharser.new_instance()
-# print(instance.test)
-# # print(instance.testa)
-# print('----------')
-# print_hyperparameters()
-# print_hyperparameters2()
-# print('--------')
-# my_pharser = MyPharser()
-# my_instance = my_pharser.new_instance()
-# print(my_pharser.my_test)
-# print(my_pharser.ehi)
-#
-#
-my_parser = MyPharser()
-phyper.set_parser(my_parser)
-# phyper.set_hyperparameters(my_parser)
-# instance = phyper.Instance()
-# print(instance.my_test)
+class MyParser(phyper.Parser, NonKeys):
+    my_testa: str = 1
+    ehi = None
+    bbbbb = 32
+    c = 'ehi'
 
-my_instance = phyper.new_parsed_instance()
-print(my_instance.my_test)
-print(my_instance.ehi)
-# print(instance.ehii)
-instance = phyper.new_instance()
-print(instance.test)
-print(instance.a)
 
-print_instances()
+hashed_resources_folder = 'hashed_resources'
+my_parser = MyParser(hashed_resources_folder)
+my_parser.register_new_resource(name='normalizer', dependencies=['my_testa', 'ehi', 'bbbbb'])
 
+print(my_parser.get_hyperparameters())
+print(my_parser.get_hashable_hyperparameters())
+my_instance = my_parser.new_instance()
+my_instance.get_instance_hash()
+print(my_instance.get_hyperparameters())
+print(my_instance.get_hashable_hyperparameters())
+print(my_instance.get_instance_hash())
+print(my_instance.get_instance_hash('normalizer'))
+# print(my_instance.get_instance_hash('c'))
+print(my_instance.get_resources_path())
+print(my_instance.get_resources_path('normalizer'))
+
+d = {'n_epochs': [50], 'c': ['c0', 'c1'], 'my_testa': [1, 2, 3]}
+instances: List[MyParser] = my_parser.get_instances_from_dictionary(d)
+
+for instance in instances:
+    print(instance.get_instance_hash())
