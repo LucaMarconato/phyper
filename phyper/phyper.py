@@ -1,9 +1,11 @@
+from __future__ import annotations
 import os
 import hashlib
 from collections import OrderedDict
-from typing import List, Optional
+from typing import List, Optional, Callable
 import pandas as pd
 import colorama
+import pprint
 
 
 class Parser:
@@ -112,3 +114,61 @@ class Parser:
         assert self._is_parser is True
         df = self.cartesian_product(d)
         return self.get_instances_from_df(df)
+
+    @staticmethod
+    def snakemake_helper_get_model_descriptions_paths(instance: Parser):
+        assert instance._is_parser is False
+        paths = []
+        for resource_name in instance._dependencies.keys():
+            path = Parser._snakemake_helper_get_model_description_path_for_resource(instance, resource_name)
+            paths.append(path)
+        return paths
+
+    @staticmethod
+    def _snakemake_helper_get_model_description_path_for_resource(instance: Parser, resource_name: str):
+        path = os.path.join(instance.get_resources_path(resource_name), 'parameters.json')
+        return path
+
+    @staticmethod
+    def snakemake_helper_log_hyperparameters(instances: List[Parser]):
+        # here I should maybe put an integrity check and test that all the instances have all the same set of resources
+        instance0 = instances[0]
+        for resource_name in instance0._dependencies.keys():
+            path = Parser._snakemake_helper_get_model_description_path_for_resource(instance0, resource_name)
+            s = ''
+            for instance in instances:
+                d = instance.get_hyperparameters()
+                dependencies = instance.get_dependencies_for_resources(resource_name)
+                d = {k: v for k, v in d.items() if k in dependencies}
+                s += pprint.pformat(d)
+                s += '\n'
+            with open(path, 'w') as f:
+                f.write(s)
+
+    @staticmethod
+    def get_instances_hashes(instances: List[Parser], resource_name: Optional[str] = None):
+        hashes = [instance.get_instance_hash(resource_name=resource_name) for instance in instances]
+        return hashes
+
+    @staticmethod
+    def get_instance_from_hash(instance_hash: str, instances: List[Parser], resource_name: Optional[str] = None):
+        l = [instance for instance in instances if instance.get_instance_hash(resource_name) == instance_hash]
+        # specifying resource_name as a parameters of this function can be verbose, if that is not done but we are
+        # looking for the Parser instance relative to a resource, it makes sense to have len(l) > 1. So, we return l[
+        # 0]. This could in principle cause bugs, so I may put an assert len(l) == 1 and require to specify
+        # resource_name
+        return l[0]
+
+    @staticmethod
+    def _snakemake_helper_get_wildcarded_path(path: str, instance: Parser, resource_name: Optional[str] = None):
+        h = instance.get_instance_hash(resource_name)
+        assert path.count(h) == 1
+        return path.replace(h, f'{{{resource_name + "_" if resource_name is not None else ""}hash}}')
+
+    @staticmethod
+    def snakemake_helper_get_wildcarded_path(path_function: Callable[[Parser], str], instance: Parser,
+                                             resource_name: Optional[str] = None):
+        wildcarded_path = Parser._snakemake_helper_get_wildcarded_path(path_function(instance),
+                                                                       instance,
+                                                                       resource_name)
+        return wildcarded_path

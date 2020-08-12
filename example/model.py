@@ -1,7 +1,7 @@
 import torch.nn as nn
 import torch.nn.functional as F
 
-from example.config import Instance
+from config import Instance
 
 
 class Model(nn.Module):

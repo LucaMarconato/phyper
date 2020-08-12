@@ -1,4 +1,4 @@
-from example.config import instances, Instance
+from config import instances, Instance
 from sklearn.model_selection import KFold, StratifiedKFold
 
 from torch.utils.data import Dataset, SequentialSampler, DataLoader
@@ -6,13 +6,38 @@ from sklearn.datasets import load_iris
 import itertools
 import torch
 import numpy as np
+from paths import get_preprocessed_dataset_path
+import dill
 
 
+# just for the purpose of presenting this library, we suppose that we perform a super heavy prepreprocessing step to
+# the data that makes it convenient to do it only once (in the __init__ function of Iris(Dataset)). We then pickle
+# the data and load the pickled data when training models
 class Iris(Dataset):
-    def __init__(self):
+    def __init__(self, instance: Instance):
         super().__init__()
         self.iris = load_iris()
-        self.data = self.iris.data
+        self.preprocessing_method = instance.preprocessing_method
+        self.raw_data = self.iris.data
+
+        # super heavy preprocessing function
+        def preprocess_data(data, method):
+            import time
+            # 20 seconds of heavy work
+            time.sleep(20)
+            if method == 'identity':
+                return data
+            elif method == 'log':
+                return np.log(data + 1)
+            elif method == 'square':
+                return np.square(data)
+            else:
+                raise RuntimeError(f'method unknown: {method}')
+
+        print('preprocesing data... ', end='')
+        self.data = preprocess_data(self.raw_data, method=self.preprocessing_method)
+        print('DONE')
+
         self.target = self.iris.target
 
     def __len__(self):
@@ -29,9 +54,20 @@ class Iris(Dataset):
         return self.iris.target
 
 
+def preprocess_data(instance: Instance):
+    iris = Iris(instance)
+    path = get_preprocessed_dataset_path(instance)
+    dill.dump(iris, open(path, 'wb'))
+
+
+def load_preprocess_data(instance: Instance):
+    path = get_preprocessed_dataset_path(instance)
+    return dill.load(open(path, 'rb'))
+
+
 def get_data_loaders(instance: Instance):
     # extract the variable "test": the indices in the iris dataset of the test set
-    iris = Iris()
+    iris = load_preprocess_data(instance)
     l = list(range(len(iris)))
     y = iris.get_targets()
     to_shuffle = list(zip(l, y))
@@ -67,6 +103,7 @@ def get_data_loaders(instance: Instance):
 
 if __name__ == '__main__':
     instance = instances[0]
+    preprocess_data(instance)
     training_loader, validation_loader, test_loader = get_data_loaders(instance)
     for x, y in training_loader:
         print(x.shape, y.shape)

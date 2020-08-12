@@ -1,10 +1,12 @@
 import torch
 import torch.optim
 import torch.nn as nn
+import h5py
 
-from example.config import Instance
-from example.model import Model
-from example.dataset import get_data_loaders
+from config import Instance
+from model import Model
+from dataset import get_data_loaders
+from paths import get_torch_model_path, get_training_metrics_path
 
 
 def train(instance: Instance):
@@ -13,29 +15,43 @@ def train(instance: Instance):
     optimizer = torch.optim.SGD(model.parameters(), lr=instance.learning_rate)
     training_loader, validation_loader, test_loader = get_data_loaders(instance)
 
+    training_metrics_h5 = h5py.File(get_training_metrics_path(instance))
     for epoch in range(instance.n_epochs):
         model.train()
-        train_loss = 0
+        training_loss = 0
+        training_n_correct = 0
         for x, true_y in training_loader:
             optimizer.zero_grad()
             y = model(x)
             loss = cross_entropy_loss(y, true_y)
             loss.backward()
-            print(loss)
-            loss_item = loss.item()
-            print(loss_item)
-            train_loss += loss_item
+            training_loss += loss.item()
+            training_n_correct += torch.sum((true_y == torch.max(y, 1)[1]).double())
             optimizer.step()
-        pass
-        # accuracy = 100 * torch.sum(true_y == torch.max(y.data, 1)[1]).double() / len(Y)
-        # print('Epoch [%d/%d] Loss: %.4f   Acc: %.4f'
-        #       % (epoch + 1, num_epoch, loss.item(), acc.item()))
 
+        if epoch % instance.log_interval == 0:
+            training_accuracy = 100 * training_n_correct / len(training_loader.sampler)
+            print(f'(Train) Epoch [{epoch}/{instance.n_epochs}] Loss: {training_loss:.2f} Acc: {training_accuracy:.2f}')
+            model.eval()
+            validation_loss = 0
+            validation_n_correct = 0
+            with torch.no_grad():
+                for x, true_y in validation_loader:
+                    y = model(x)
+                    loss = cross_entropy_loss(y, true_y)
+                    validation_loss += loss.item()
+                    validation_n_correct += torch.sum((true_y == torch.max(y, 1)[1]).double())
+                validation_accuracy = 100 * validation_n_correct / len(validation_loader.sampler)
+                print(
+                    f'(Val) Epoch [{epoch}/{instance.n_epochs}] Loss: {validation_loss:.2f} Acc: {validation_accuracy:.2f}')
 
-# _, predicted = torch.max(out.data, 1)
-#
-# # get accuration
-# print('Accuracy of the network %.4f %%' % (100 * torch.sum(Y == predicted).double() / len(Y)))
+                torch.save(model.state_dict(), get_torch_model_path(instance))
+                training_metrics_h5[f'epoch{epoch}/training_loss'] = training_loss
+                training_metrics_h5[f'epoch{epoch}/training_accuracy'] = training_accuracy
+                training_metrics_h5[f'epoch{epoch}/validation_loss'] = validation_loss
+                training_metrics_h5[f'epoch{epoch}/validation_accuracy'] = validation_accuracy
+    training_metrics_h5.close()
+
 
 if __name__ == '__main__':
     from example.config import instances
