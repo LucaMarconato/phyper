@@ -2,12 +2,12 @@ import phyper
 from typing import List
 
 
-# describe the hyperparameters
+# describing the hyperparameters and specifying the default values
 class NonKeys:
-    n_epochs = 20
+    n_epochs = 2000
     batch_size = 32
     learning_rate = 0.001
-    log_interval = 20
+    log_interval = 200
 
 
 class Instance(phyper.Parser, NonKeys):
@@ -19,15 +19,23 @@ class Instance(phyper.Parser, NonKeys):
     # preprocessing method to apply to the data, and that it takes MINUTES to compute
     #
     # possible values: 'identity' 'log', 'square'
-    preprocessing_method = 'identity'
+    transformation = 'identity'
+    # subtracting the mean after transformation
+    centering = False
 
+# TODO: maybe use an enum instead of strings for resources, to avoid typos and use code-completion
 
-# describe intermediate quantities depending on a subset of the hyperparameters
+# describing intermediate quantities depending on a subset of the hyperparameters
 parser = Instance(hashed_resources_folder='derived_data')
-parser.register_new_resource(name='preprocessed_data', dependencies=['preprocessing_method'])
+parser.register_new_resource(name='transformed_data', dependencies=['transformation'])
+parser.register_new_resource(name='preprocessed_data', dependencies=['transformation', 'centering'])
+parser.register_new_resource(
+    name='cross_validated_model',
+    dependencies=parser.get_dependencies_for_resources('preprocessed_data') + ['n_hidden_layers'])
 
-# specify and instanciate values for the hyperparameters
-d = {'preprocessing_method': ['identity', 'log', 'square'],
+# specifying and instanciating values for the hyperparameters
+d = {'transformation': ['identity', 'log', 'square'],
+     'centering': [True, False],
      'n_hidden_layers': [1, 2, 3],
      'cv_fold': list(range(5))}
 

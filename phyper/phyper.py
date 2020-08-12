@@ -2,7 +2,7 @@ from __future__ import annotations
 import os
 import hashlib
 from collections import OrderedDict
-from typing import List, Optional, Callable
+from typing import List, Optional, Callable, Dict, Any
 import pandas as pd
 import colorama
 import pprint
@@ -77,8 +77,11 @@ class Parser:
         os.makedirs(path, exist_ok=True)
 
     def get_dependencies_for_resources(self, name: str):
-        assert self._is_parser is True
-        return self._dependencies[name]
+        if self._is_parser:
+            parser = self
+        else:
+            parser = self._parser
+        return parser._dependencies[name]
 
     def get_resources_path(self, resource_name: Optional[str] = None):
         if self._is_parser:
@@ -116,6 +119,43 @@ class Parser:
         return self.get_instances_from_df(df)
 
     @staticmethod
+    def get_projections(instances: List[Parser], hyperparameter_names: List[str]):
+        df = pd.DataFrame(columns=hyperparameter_names)
+        rows = []
+        # maybe I should add a test to check the all the keys are equal among instances, as expected
+        for instance in instances:
+            d = instance.get_hyperparameters()
+            row = {name: d[name] for name in hyperparameter_names}
+            rows.append(row)
+        df = df.append(rows)
+        df.drop_duplicates(inplace=True)
+        return df
+
+    @staticmethod
+    def get_filtered_instances(instances: List[Parser], hyperparameters: Dict[str, Any]):
+        l = list()
+        for instance in instances:
+            d = instance.get_hyperparameters()
+            for k, v in hyperparameters.items():
+                if d[k] != v:
+                    break
+            else:
+                l.append(instance)
+        return l
+
+    @staticmethod
+    def get_instances_hashes(instances: List[Parser], resource_name: Optional[str] = None):
+        hashes = [instance.get_instance_hash(resource_name=resource_name) for instance in instances]
+        return hashes
+
+    @staticmethod
+    def get_instance_from_hash(instance_hash: str, instances: List[Parser], resource_name: Optional[str] = None):
+        l = [instance for instance in instances if instance.get_instance_hash(resource_name) == instance_hash]
+        # maybe here, when resource_name is not None, we want to delete the hyperparamters that are not relative to the resource
+        # in fact otherwise one could have subtle bugs
+        return l[0]
+
+    @staticmethod
     def snakemake_helper_get_model_descriptions_paths(instance: Parser):
         assert instance._is_parser is False
         paths = []
@@ -144,20 +184,6 @@ class Parser:
                 s += '\n'
             with open(path, 'w') as f:
                 f.write(s)
-
-    @staticmethod
-    def get_instances_hashes(instances: List[Parser], resource_name: Optional[str] = None):
-        hashes = [instance.get_instance_hash(resource_name=resource_name) for instance in instances]
-        return hashes
-
-    @staticmethod
-    def get_instance_from_hash(instance_hash: str, instances: List[Parser], resource_name: Optional[str] = None):
-        l = [instance for instance in instances if instance.get_instance_hash(resource_name) == instance_hash]
-        # specifying resource_name as a parameters of this function can be verbose, if that is not done but we are
-        # looking for the Parser instance relative to a resource, it makes sense to have len(l) > 1. So, we return l[
-        # 0]. This could in principle cause bugs, so I may put an assert len(l) == 1 and require to specify
-        # resource_name
-        return l[0]
 
     @staticmethod
     def _snakemake_helper_get_wildcarded_path(path: str, instance: Parser, resource_name: Optional[str] = None):
