@@ -21,6 +21,9 @@ Features:
 * IDE-enabled code completion for hyperparameters (tested with PyCharm)
 * generating hashes for final outputs and intermediate resources to avoid redundant computations or resource clashing between different models; the hashes depend on a predefined subset of hyperparameters
 
+## The name `phyper`
+It is a combination of `pipeline`, `hyperparameter` and `Python`.
+
 ## Acknowledgments
 The library is partly inspired by `argparse` and `tap` (`typed argument parser`).
 
@@ -200,12 +203,12 @@ rule transform_data:
     input: expand(rules._transform_data.output, transformed_data_hash=Instance.get_instances_hashes(instances, resource_name='transformed_data'))
 
 rule _preprocess_data:
-    input:lambda wildcards: get_transformed_dataset_path(Instance.get_instance_from_hash(wildcards.preprocessed_data_hash, instances, resource_name='preprocessed_data'))
+    input: lambda wildcards: get_transformed_dataset_path(Instance.get_instance_from_hash(wildcards.preprocessed_data_hash, instances, resource_name='preprocessed_data'))
     output: Instance.snakemake_helper_get_wildcarded_path(get_preprocessed_dataset_path, instances[0], resource_name='preprocessed_data')
     shell: "python -m main preprocess-data --instance-hash {wildcards.preprocessed_data_hash}"
 
 rule preprocess_data:
-    input:expand(rules._preprocess_data.output, preprocessed_data_hash=Instance.get_instances_hashes(instances, resource_name='preprocessed_data'))
+    input: expand(rules._preprocess_data.output, preprocessed_data_hash=Instance.get_instances_hashes(instances, resource_name='preprocessed_data'))
 
 rule _train_nn:
     input: lambda wildcards: get_preprocessed_dataset_path(Instance.get_instance_from_hash(wildcards.hash, instances))
