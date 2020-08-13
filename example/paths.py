@@ -34,5 +34,12 @@ def get_best_model_training_metrics_path():
     return os.path.join(processed_data_folder, 'best_model_training_metrics.hdf5')
 
 
+jupyter_plot_folder = os.path.join(processed_data_folder, 'jupyter_plots')
+os.makedirs(jupyter_plot_folder, exist_ok=True)
+
+
+def jupyter_plot(filename):
+    return os.path.join(jupyter_plot_folder, filename)
+
 # def get_best_model_test_set_predictions_path():
 #     return os.path.join(processed_data_folder, 'best_model_test_set_predictions.hdf5')

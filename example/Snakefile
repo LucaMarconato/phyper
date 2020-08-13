@@ -4,24 +4,19 @@ from paths import get_transformed_dataset_path, get_preprocessed_dataset_path, g
     get_best_model_training_metrics_path
 
 rule _transform_data:
-    output:Instance.snakemake_helper_get_wildcarded_path(get_transformed_dataset_path, instances[0],
-                                                         resource_name='transformed_data')
+    output: Instance.snakemake_helper_get_wildcarded_path(get_transformed_dataset_path, instances[0], resource_name='transformed_data')
     shell: "python -m main transform-data --instance-hash {wildcards.transformed_data_hash}"
 
 rule transform_data:
-    input:expand(rules._transform_data.output,
-                 transformed_data_hash=Instance.get_instances_hashes(instances, resource_name='transformed_data'))
+    input: expand(rules._transform_data.output, transformed_data_hash=Instance.get_instances_hashes(instances, resource_name='transformed_data'))
 
 rule _preprocess_data:
-    input:lambda wildcards: get_transformed_dataset_path(
-        Instance.get_instance_from_hash(wildcards.preprocessed_data_hash, instances, resource_name='preprocessed_data'))
-    output:Instance.snakemake_helper_get_wildcarded_path(get_preprocessed_dataset_path, instances[0],
-                                                         resource_name='preprocessed_data')
+    input:lambda wildcards: get_transformed_dataset_path(Instance.get_instance_from_hash(wildcards.preprocessed_data_hash, instances, resource_name='preprocessed_data'))
+    output: Instance.snakemake_helper_get_wildcarded_path(get_preprocessed_dataset_path, instances[0], resource_name='preprocessed_data')
     shell: "python -m main preprocess-data --instance-hash {wildcards.preprocessed_data_hash}"
 
 rule preprocess_data:
-    input:expand(rules._preprocess_data.output,
-                 preprocessed_data_hash=Instance.get_instances_hashes(instances, resource_name='preprocessed_data'))
+    input:expand(rules._preprocess_data.output, preprocessed_data_hash=Instance.get_instances_hashes(instances, resource_name='preprocessed_data'))
 
 rule _train_nn:
     input: lambda wildcards: get_preprocessed_dataset_path(Instance.get_instance_from_hash(wildcards.hash, instances))
@@ -49,9 +44,10 @@ rule retrain_best_model:
          "python -m main train-best-model"
 
 rule all:
-    input: rules.compute_cv_scores.output
+    input: rules.retrain_best_model.output
 
 # see the dependencies dag with
 # snakemake --dag --forceall dag | dot -Tpdf > graph.pdf; open graph.pdf
 rule dag:
-    input: expand(rules._train_nn.output, hash=Instance.get_instances_hashes([instances[0]]))
+    # input: expand(rules._train_nn.output, hash=Instance.get_instances_hashes([instances[0]]))
+    input: rules.all.input

@@ -5,6 +5,12 @@ import h5py
 import pandas as pd
 
 
+def get_last_epoch(keys):
+    epochs = [int(s.split('epoch')[1]) for s in keys]
+    last_epoch = max(epochs)
+    return last_epoch
+
+
 def compute_score_for_each_model(instances: List[Instance]):
     cv_k = instances[0].cv_k
     df = Instance.get_projections(instances, hyperparameter_names=instances[0].get_dependencies_for_resources(
@@ -21,8 +27,7 @@ def compute_score_for_each_model(instances: List[Instance]):
             with h5py.File(path, 'r') as f5:
                 keys = f5.keys()
                 # keys are like ['epoch10', 'epoch20', ...]
-                epochs = [int(s.split('epoch')[1]) for s in keys]
-                last_epoch = max(epochs)
+                last_epoch = get_last_epoch(keys)
                 metrics = f5[f'epoch{last_epoch}']
                 validation_loss = metrics['validation_loss'][...].item()
                 average_validation_loss += validation_loss

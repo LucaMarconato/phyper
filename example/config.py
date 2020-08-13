@@ -23,10 +23,12 @@ class Instance(phyper.Parser, NonKeys):
     # subtracting the mean after transformation
     centering = False
 
+
 # TODO: maybe use an enum instead of strings for resources, to avoid typos and use code-completion
 
 # describing intermediate quantities depending on a subset of the hyperparameters
 parser = Instance(hashed_resources_folder='derived_data')
+
 parser.register_new_resource(name='transformed_data', dependencies=['transformation'])
 parser.register_new_resource(name='preprocessed_data', dependencies=['transformation', 'centering'])
 parser.register_new_resource(

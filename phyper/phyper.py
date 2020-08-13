@@ -119,6 +119,15 @@ class Parser:
         return self.get_instances_from_df(df)
 
     @staticmethod
+    def get_resources(instances: List[Parser], resource_name: str) -> List[Parser]:
+        unique = {}
+        for instance in instances:
+            resource_hash = instance.get_instance_hash(resource_name)
+            unique[resource_hash] = instance
+        # maybe here I should set all the other hyperparameters to None
+        return list(unique.values())
+
+    @staticmethod
     def get_projections(instances: List[Parser], hyperparameter_names: List[str]):
         df = pd.DataFrame(columns=hyperparameter_names)
         rows = []
