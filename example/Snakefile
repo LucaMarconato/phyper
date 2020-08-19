@@ -1,25 +1,39 @@
 from config import instances, Instance
 from paths import get_transformed_dataset_path, get_preprocessed_dataset_path, get_torch_model_path, \
     get_training_metrics_path, get_cross_validation_scores_path, get_best_model_torch_model_path, \
-    get_best_model_training_metrics_path
+    get_best_model_training_metrics_path, get_jupyter_path, get_jupyter_html_path
 
 rule _transform_data:
-    output: Instance.snakemake_helper_get_wildcarded_path(get_transformed_dataset_path, instances[0], resource_name='transformed_data')
-    shell: "python -m main transform-data --instance-hash {wildcards.transformed_data_hash}"
+    output:
+          Instance.snakemake_helper_get_wildcarded_path(get_transformed_dataset_path, instances[0],
+                                                        resource_name='transformed_data')
+    shell:
+         "python -m main transform-data --instance-hash {wildcards.transformed_data_hash}"
 
 rule transform_data:
-    input: expand(rules._transform_data.output, transformed_data_hash=Instance.get_instances_hashes(instances, resource_name='transformed_data'))
+    input:
+         expand(rules._transform_data.output,
+                transformed_data_hash=Instance.get_instances_hashes(instances, resource_name='transformed_data'))
 
 rule _preprocess_data:
-    input:lambda wildcards: get_transformed_dataset_path(Instance.get_instance_from_hash(wildcards.preprocessed_data_hash, instances, resource_name='preprocessed_data'))
-    output: Instance.snakemake_helper_get_wildcarded_path(get_preprocessed_dataset_path, instances[0], resource_name='preprocessed_data')
-    shell: "python -m main preprocess-data --instance-hash {wildcards.preprocessed_data_hash}"
+    input:
+         lambda wildcards: get_transformed_dataset_path(
+             Instance.get_instance_from_hash(wildcards.preprocessed_data_hash, instances,
+                                             resource_name='preprocessed_data'))
+    output:
+          Instance.snakemake_helper_get_wildcarded_path(get_preprocessed_dataset_path, instances[0],
+                                                        resource_name='preprocessed_data')
+    shell:
+         "python -m main preprocess-data --instance-hash {wildcards.preprocessed_data_hash}"
 
 rule preprocess_data:
-    input:expand(rules._preprocess_data.output, preprocessed_data_hash=Instance.get_instances_hashes(instances, resource_name='preprocessed_data'))
+    input:
+         expand(rules._preprocess_data.output,
+                preprocessed_data_hash=Instance.get_instances_hashes(instances, resource_name='preprocessed_data'))
 
 rule _train_nn:
-    input: lambda wildcards: get_preprocessed_dataset_path(Instance.get_instance_from_hash(wildcards.hash, instances))
+    input:
+         lambda wildcards: get_preprocessed_dataset_path(Instance.get_instance_from_hash(wildcards.hash, instances))
     output:
           Instance.snakemake_helper_get_wildcarded_path(get_torch_model_path, instances[0]),
           Instance.snakemake_helper_get_wildcarded_path(get_training_metrics_path, instances[0])
@@ -27,27 +41,50 @@ rule _train_nn:
          "python -m main train-model --instance-hash {wildcards.hash}"
 
 rule train_nn:
-    input: expand(rules._train_nn.output, hash=Instance.get_instances_hashes(instances))
+    input:
+         expand(rules._train_nn.output, hash=Instance.get_instances_hashes(instances))
 
 rule compute_cv_scores:
-    input: [get_training_metrics_path(instance) for instance in instances]
-    output: get_cross_validation_scores_path()
+    input:
+         [get_training_metrics_path(instance) for instance in instances]
+    output:
+          get_cross_validation_scores_path()
     run:
         from score_models import compute_score_for_each_model
 
         compute_score_for_each_model(instances)
 
 rule retrain_best_model:
-    input: get_cross_validation_scores_path()
-    output: get_best_model_torch_model_path(), get_best_model_training_metrics_path()
+    input:
+         get_cross_validation_scores_path()
+    output:
+          get_best_model_torch_model_path(), get_best_model_training_metrics_path()
     shell:
          "python -m main train-best-model"
 
+# there is a problem with relative paths
+# rule plot:
+#     input:
+#          get_best_model_torch_model_path(),
+#          get_best_model_training_metrics_path()
+#     output:
+#           get_jupyter_html_path()
+#     run:
+#         print(get_jupyter_path())
+#         print(get_jupyter_html_path())
+#         cmd0 = f'jupyter nbconvert --to notebook --execute {get_jupyter_path()}'
+#         cmd1 = f'jupyter nbconvert {get_jupyter_path()} --to html --output {get_jupyter_html_path()}'
+#         shell(cmd0)
+#         shell(cmd1)
+
 rule all:
-    input: rules.retrain_best_model.output
+    input:
+         rules.retrain_best_model.output
+         # rules.plot.output
 
 # see the dependencies dag with
 # snakemake --dag --forceall dag | dot -Tpdf > graph.pdf; open graph.pdf
 rule dag:
     # input: expand(rules._train_nn.output, hash=Instance.get_instances_hashes([instances[0]]))
-    input: rules.all.input
+    input:
+         rules.all.input

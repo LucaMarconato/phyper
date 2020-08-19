@@ -34,6 +34,14 @@ def get_best_model_training_metrics_path():
     return os.path.join(processed_data_folder, 'best_model_training_metrics.hdf5')
 
 
+def get_jupyter_path():
+    return './notebooks/results.ipynb'
+
+
+def get_jupyter_html_path():
+    return os.path.join(processed_data_folder, 'results.html')
+
+
 jupyter_plot_folder = os.path.join(processed_data_folder, 'jupyter_plots')
 os.makedirs(jupyter_plot_folder, exist_ok=True)
 

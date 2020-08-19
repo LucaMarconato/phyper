@@ -88,7 +88,7 @@ def get_data_loaders(instance: Instance):
     y = np.array(y).reshape(-1, 1)
     training_validation_indices, test_indices = StratifiedKFold(n_splits=(instance.cv_k + 1)).split(l,
                                                                                                  y).__iter__().__next__()
-    training_validation = l[training_validation_indices, :].tolist()
+    training_validation = l[training_validation_indices, :].ravel().tolist()
     test = l[test_indices, :].ravel().tolist()
 
     # extract the variables "training" and "validation": the indices in the iris dataset of the training and
@@ -96,15 +96,15 @@ def get_data_loaders(instance: Instance):
     splits = KFold(n_splits=instance.cv_k).split(training_validation)
     training_indices, validation_indices = next(itertools.islice(splits, instance.cv_fold, None))
     a = np.array(training_validation)
-    training = a[training_indices, :].ravel().tolist()
-    validation = a[validation_indices, :].ravel().tolist()
+    training = a[training_indices].ravel().tolist()
+    validation = a[validation_indices].ravel().tolist()
     assert len(set(training) | set(validation) | set(test)) == len(l)
 
     # create samplers and then data loader based on the indices above
-    training_sampler = SequentialSampler(training_indices)
-    validation_sampler = SequentialSampler(validation_indices)
-    training_validation_sampler = SequentialSampler(training_validation_indices)
-    test_sampler = SequentialSampler(test_indices)
+    training_sampler = SequentialSampler(training)
+    validation_sampler = SequentialSampler(validation)
+    training_validation_sampler = SequentialSampler(training_validation)
+    test_sampler = SequentialSampler(test)
 
     training_loader = DataLoader(iris, batch_size=instance.batch_size, sampler=training_sampler)
     validation_loader = DataLoader(iris, batch_size=instance.batch_size, sampler=validation_sampler)
@@ -116,8 +116,9 @@ def get_data_loaders(instance: Instance):
 
 if __name__ == '__main__':
     instance = instances[0]
-    transform_data(instance)
-    center_data(instance)
+    get_data_loaders(instance)
+    # transform_data(instance)
+    # center_data(instance)
     # preprocess_data(instance)
     # training_loader, validation_loader, test_loader = get_data_loaders(instance)
     # for x, y in training_loader:
