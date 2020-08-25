@@ -2,7 +2,7 @@ from __future__ import annotations
 import os
 import hashlib
 from collections import OrderedDict
-from typing import List, Optional, Callable, Dict, Any
+from typing import List, Optional, Callable, Dict, Any, Union
 import pandas as pd
 import colorama
 import pprint
@@ -28,13 +28,16 @@ class Parser:
             setattr(instance, k, v)
         return instance
 
-    def load_instance_from_disk_by_hash(self, instance_hash: str, resource_name: Optional[str] = None) -> Parser:
+    def load_instance_from_disk_by_hash(self, instance_hash: str, resource_name: Optional[str] = None,
+                                        skip_missing=False) -> Union[Parser, None]:
         assert self._is_parser is True
         if resource_name is None:
             hash_folder = os.path.join(self._models_folder, instance_hash)
         else:
             hash_folder = os.path.join(self._hashed_resources_folder, resource_name, instance_hash)
         instance_info_file = os.path.join(hash_folder, 'instance_info.json')
+        if not os.path.isfile(instance_info_file) and skip_missing:
+            return None
         with open(instance_info_file, 'r') as infile:
             instance_info = json.load(infile)
         instance = self.new_instance()
