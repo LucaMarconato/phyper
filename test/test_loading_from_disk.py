@@ -1,5 +1,5 @@
 import phyper
-from typing import List
+
 
 
 # describing the hyperparameters and specifying the default values
@@ -24,10 +24,8 @@ class Instance(phyper.Parser, NonKeys):
     centering = False
 
 
-# TODO: maybe use an enum instead of strings for resources, to avoid typos and use code-completion
-
 # describing intermediate quantities depending on a subset of the hyperparameters
-parser = Instance(hashed_resources_folder='derived_data')
+parser = Instance(hashed_resources_folder='../example/derived_data')
 
 parser.register_new_resource(name='transformed_data', dependencies=['transformation'])
 parser.register_new_resource(name='preprocessed_data', dependencies=['transformation', 'centering'])
@@ -35,11 +33,10 @@ parser.register_new_resource(
     name='cross_validated_model',
     dependencies=parser.get_dependencies_for_resources('preprocessed_data') + ['n_hidden_layers'])
 
-# specifying and instanciating values for the hyperparameters
-d = {'transformation': ['identity', 'log', 'square'],
-     'centering': [True, False],
-     'n_hidden_layers': [1, 2, 3],
-     'cv_fold': list(range(5))}
+my_instance: Instance = parser.load_instance_from_disk_by_hash('0d7146e6c9d5397a8c604924fc7d8d8b4b3efd903b462b9e7e22fc0275a5a280')
+my_resource: Instance = parser.load_instance_from_disk_by_hash('6dbab4c9ca812a269ead275cb01e655c19fc619feeb538a7e61821713d396eee', resource_name='transformed_data')
 
-instances: List[Instance] = parser.get_instances_from_dictionary(d)
-parser.generate_instance_info_files(instances)
+from pprint import pprint
+
+pprint(my_instance.get_hyperparameters())
+pprint(my_resource.get_hyperparameters())

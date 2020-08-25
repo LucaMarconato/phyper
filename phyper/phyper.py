@@ -6,6 +6,7 @@ from typing import List, Optional, Callable, Dict, Any
 import pandas as pd
 import colorama
 import pprint
+import json
 
 
 class Parser:
@@ -25,6 +26,22 @@ class Parser:
         d = self.get_hyperparameters(calling_from_pure_parser=True)
         for k, v in d.items():
             setattr(instance, k, v)
+        return instance
+
+    def load_instance_from_disk_by_hash(self, instance_hash: str, resource_name: Optional[str] = None) -> Parser:
+        assert self._is_parser is True
+        if resource_name is None:
+            hash_folder = os.path.join(self._models_folder, instance_hash)
+        else:
+            hash_folder = os.path.join(self._hashed_resources_folder, resource_name, instance_hash)
+        instance_info_file = os.path.join(hash_folder, 'instance_info.json')
+        with open(instance_info_file, 'r') as infile:
+            instance_info = json.load(infile)
+        instance = self.new_instance()
+        for k, v in instance_info.items():
+            setattr(instance, k, v)
+        computed_hash = instance.get_instance_hash(resource_name=resource_name)
+        assert instance_hash == computed_hash
         return instance
 
     def get_hyperparameters(self, calling_from_pure_parser=False):
@@ -49,6 +66,7 @@ class Parser:
         keys = self.get_hashable_hyperparameters()
         d = self.get_hyperparameters()
         od = OrderedDict(sorted({k: d[k] for k in keys}.items()))
+        used_for_hash = dict()
         for k, v in od.items():
             use_hash = True
             if resource_name is not None:
@@ -58,14 +76,48 @@ class Parser:
             if use_hash:
                 h.update(str(k).encode('utf-8'))
                 h.update(str(v).encode('utf-8'))
-        hd = h.hexdigest()
+                used_for_hash[k] = v
+        instance_hash = h.hexdigest()
 
         if resource_name is None:
-            hash_folder = os.path.join(self._parser._models_folder, hd)
+            hash_folder = os.path.join(self._parser._models_folder, instance_hash)
         else:
-            hash_folder = os.path.join(self._parser._hashed_resources_folder, resource_name, hd)
+            hash_folder = os.path.join(self._parser._hashed_resources_folder, resource_name, instance_hash)
         os.makedirs(hash_folder, exist_ok=True)
-        return hd
+        return instance_hash
+
+    def _generate_instance_info_files_for_resource(self, instance: Parser, resource_name: Optional[str] = None):
+        assert self._is_parser is True
+        instance_or_resource_hash = instance.get_instance_hash(resource_name=resource_name)
+        if resource_name is None:
+            hash_folder = os.path.join(self._models_folder, instance_or_resource_hash)
+        else:
+            hash_folder = os.path.join(self._hashed_resources_folder, resource_name, instance_or_resource_hash)
+        os.makedirs(hash_folder, exist_ok=True)
+        f = os.path.join(hash_folder, 'instance_info.json')
+
+        keys = instance.get_hashable_hyperparameters()
+        d = instance.get_hyperparameters()
+        od = OrderedDict(sorted({k: d[k] for k in keys}.items()))
+        used_for_hash = dict()
+        for k, v in od.items():
+            use_hash = True
+            if resource_name is not None:
+                dependencies = self._dependencies[resource_name]
+                if k not in dependencies:
+                    use_hash = False
+            if use_hash:
+                used_for_hash[k] = v
+
+        with open(f, 'w') as outfile:
+            json.dump(used_for_hash, outfile, indent=4)
+
+    def generate_instance_info_files(self, instances: List[Parser]):
+        assert self._is_parser is True
+        resource_names = list(self._dependencies.keys())
+        for instance in instances:
+            for resource_name in [None, *resource_names]:
+                self._generate_instance_info_files_for_resource(instance, resource_name=resource_name)
 
     def register_new_resource(self, name: str, dependencies: List[str]):
         assert self._is_parser is True
