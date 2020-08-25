@@ -44,7 +44,7 @@ class Parser:
 
         expected = instance.get_hashable_hyperparameters()
         if resource_name is not None:
-            expected = expected.intersection(set(instance._parse._dependencies[resource_name]))
+            expected = expected.intersection(set(instance._parser._dependencies[resource_name]))
         real = set(instance_info.keys())
         assert expected == real
 
@@ -180,6 +180,13 @@ class Parser:
         df = self.cartesian_product(d)
         return self.get_instances_from_df(df)
 
+    def get_resource_names(self):
+        if self._is_parser:
+            parser = self
+        else:
+            parser = self._parser
+        return sorted(list(parser._dependencies.keys()))
+
     @staticmethod
     def get_resources(instances: List[Parser], resource_name: str) -> List[Parser]:
         unique = {}
@@ -201,6 +208,19 @@ class Parser:
         df = df.append(rows)
         df.drop_duplicates(inplace=True)
         return df
+
+    @staticmethod
+    def get_df_of_instances(instances: List[Parser], resource_name: Optional[str] = None):
+        if len(instances) == 0:
+            return pd.DataFrame()
+        else:
+            Parser._assert_all_instances_have_the_same_hyperparameters(instances)
+            if resource_name is None:
+                hyperparameter_names = sorted(list(instances[0].get_hyperparameters().keys()))
+            else:
+                hyperparameter_names = sorted(list(instances[0]._parser._dependencies[resource_name]))
+            df = Parser.get_projections(instances, hyperparameter_names=hyperparameter_names)
+            return df
 
     @staticmethod
     def get_filtered_instances(instances: List[Parser], hyperparameters: Dict[str, Any]):
@@ -269,3 +289,10 @@ class Parser:
                                                                        instance,
                                                                        resource_name)
         return wildcarded_path
+
+    @staticmethod
+    def _assert_all_instances_have_the_same_hyperparameters(instances: List[Parser]):
+        if len(instances) > 0:
+            first = set(instances[0].get_hyperparameters().keys())
+            for instance in instances[1:]:
+                assert (first == set(instance.get_hyperparameters().keys()))

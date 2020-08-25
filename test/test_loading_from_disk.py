@@ -1,7 +1,6 @@
 import phyper
 
 
-
 # describing the hyperparameters and specifying the default values
 class NonKeys:
     n_epochs = 2000
@@ -33,8 +32,10 @@ parser.register_new_resource(
     name='cross_validated_model',
     dependencies=parser.get_dependencies_for_resources('preprocessed_data') + ['n_hidden_layers'])
 
-my_instance: Instance = parser.load_instance_from_disk_by_hash('0d7146e6c9d5397a8c604924fc7d8d8b4b3efd903b462b9e7e22fc0275a5a280')
-my_resource: Instance = parser.load_instance_from_disk_by_hash('6dbab4c9ca812a269ead275cb01e655c19fc619feeb538a7e61821713d396eee', resource_name='transformed_data')
+my_instance: Instance = parser.load_instance_from_disk_by_hash(
+    '0d7146e6c9d5397a8c604924fc7d8d8b4b3efd903b462b9e7e22fc0275a5a280')
+my_resource: Instance = parser.load_instance_from_disk_by_hash(
+    '6dbab4c9ca812a269ead275cb01e655c19fc619feeb538a7e61821713d396eee', resource_name='transformed_data')
 
 from pprint import pprint
 

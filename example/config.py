@@ -43,3 +43,14 @@ d = {'transformation': ['identity', 'log', 'square'],
 
 instances: List[Instance] = parser.get_instances_from_dictionary(d)
 parser.generate_instance_info_files(instances)
+
+if __name__ == '__main__':
+    # for printing the hashes of models and resources, useful when analyzing results
+    resource_names = parser.get_resource_names()
+    print('full instances')
+    print(Instance.get_df_of_instances(instances))
+    print()
+    for s in resource_names:
+        print(f'resource {s}')
+        print(Instance.get_df_of_instances(instances, resource_name=s))
+        print()
