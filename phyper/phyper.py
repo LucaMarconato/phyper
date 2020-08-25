@@ -41,6 +41,13 @@ class Parser:
         with open(instance_info_file, 'r') as infile:
             instance_info = json.load(infile)
         instance = self.new_instance()
+
+        expected = instance.get_hashable_hyperparameters()
+        if resource_name is not None:
+            expected = expected.intersection(set(instance._parse._dependencies[resource_name]))
+        real = set(instance_info.keys())
+        assert expected == real
+
         for k, v in instance_info.items():
             setattr(instance, k, v)
         computed_hash = instance.get_instance_hash(resource_name=resource_name)
