@@ -197,15 +197,19 @@ class Parser:
         return list(unique.values())
 
     @staticmethod
-    def get_projections(instances: List[Parser], hyperparameter_names: List[str]):
+    def get_projections(instances: List[Parser], hyperparameter_names: List[str], resource_name: Optional[str] = None):
         df = pd.DataFrame(columns=hyperparameter_names)
         rows = []
+        instance_hashes = []
         # maybe I should add a test to check the all the keys are equal among instances, as expected
         for instance in instances:
             d = instance.get_hyperparameters()
             row = {name: d[name] for name in hyperparameter_names}
             rows.append(row)
+            instance_hashes.append(instance.get_instance_hash(resource_name))
         df = df.append(rows)
+        multi_index = pd.MultiIndex.from_arrays([df.index.to_list(), instance_hashes], names=('incremental index', 'instance_hash'))
+        df.index = multi_index
         df.drop_duplicates(inplace=True)
         return df
 
@@ -219,7 +223,7 @@ class Parser:
                 hyperparameter_names = sorted(list(instances[0].get_hyperparameters().keys()))
             else:
                 hyperparameter_names = sorted(list(instances[0]._parser._dependencies[resource_name]))
-            df = Parser.get_projections(instances, hyperparameter_names=hyperparameter_names)
+            df = Parser.get_projections(instances, hyperparameter_names=hyperparameter_names, resource_name=resource_name)
             return df
 
     @staticmethod
