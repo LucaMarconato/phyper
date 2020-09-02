@@ -249,3 +249,6 @@ rule dag:
 `phyper` is finally used to retrieve the results which have been stored by the pipeline. This is done in the `notebooks/results.ipynb` notebook, in which I also do some plots to verify the model performance and the dependence of the loss and the accuracy on the hyperparameters.
 
 ![Parallel categories plot for showing the dependency of the accuracy on the hyperparameters](./figures/parallel_categories.png)
+
+## Caveats
+Renaming/adding/removing hyperparameters lead to different hashes. Upon those operations, with the current version of Phyper, one may have to recompute all the quantities. I have a solution to this that I will code and release.
