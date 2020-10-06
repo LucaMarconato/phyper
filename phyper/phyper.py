@@ -47,10 +47,10 @@ class Parser:
             expected = expected.intersection(set(instance._parser._dependencies[resource_name]))
         real = set(instance_info.keys())
         if expected != real:
-            print(f'warning: trying to load the instance from disk. {len(expected.symmetric_difference(real))} hyperparamters differ')
-            print(f'hyperparameters in the set expected but not in the set real: {expected.difference(real)}')
-            print(f'hyperparameters in the expected but not in the real: {expected.difference(real)}')
-            print('skipping the instance')
+            # print(f'warning: trying to load the instance from disk. {len(expected.symmetric_difference(real))} hyperparamters differ')
+            # print(f'hyperparameters in the set expected but not in the set real: {expected.difference(real)}')
+            # print(f'hyperparameters in the expected but not in the real: {expected.difference(real)}')
+            # print('skipping the instance')
             return None
 
         for k, v in instance_info.items():
