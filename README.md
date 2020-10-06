@@ -251,4 +251,5 @@ rule dag:
 ![Parallel categories plot for showing the dependency of the accuracy on the hyperparameters](./figures/parallel_categories.png)
 
 ## Caveats
-Renaming/adding/removing hyperparameters lead to different hashes. Upon those operations, with the current version of Phyper, one may have to recompute all the quantities. I have a solution to this that I will code and release.
+* Renaming/adding/removing hyperparameters lead to different hashes. Upon those operations, with the current version of Phyper, one may have to recompute all the quantities. I have a solution to this that I may code and release.
+* When having different "orthogonal" models some variables are never used by a model and vice-versa. I may support for a semantic in which a paramter can be undefined and lead to an exception if accessed. This solves the problem in which Instance is used to code for two different architectures, since adding one hyperparameter for one architecure will change the hash on the other.
