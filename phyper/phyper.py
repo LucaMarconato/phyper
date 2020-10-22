@@ -253,6 +253,12 @@ class Parser:
         l = [instance for instance in instances if instance.get_instance_hash(resource_name) == instance_hash]
         # maybe here, when resource_name is not None, we want to delete the hyperparamters that are not relative to the resource
         # in fact otherwise one could have subtle bugs
+        # print(resource_name, instance_hash, instances)
+        # print('data_normalization hashes')
+        # print(Parser.get_instances_hashes(instances, resource_name='data_normalization'))
+        # print('accumulate_features hashes')
+        # print(Parser.get_instances_hashes(instances, resource_name='accumulated_features'))
+        assert len(l) > 0, f'get_instance_from_hash: len(l) = {len(l)}'
         return l[0]
 
     @staticmethod
