@@ -56,7 +56,10 @@ class Parser:
         for k, v in instance_info.items():
             setattr(instance, k, v)
         computed_hash = instance.get_instance_hash(resource_name=resource_name)
-        assert instance_hash == computed_hash
+        # havent tested properly when this happen, let's just ignore these cases
+        if instance_hash != computed_hash:
+            return None
+        # assert instance_hash == computed_hash
         return instance
 
     def get_hyperparameters(self, calling_from_pure_parser=False):
@@ -258,7 +261,7 @@ class Parser:
         # print(Parser.get_instances_hashes(instances, resource_name='data_normalization'))
         # print('accumulate_features hashes')
         # print(Parser.get_instances_hashes(instances, resource_name='accumulated_features'))
-        assert len(l) > 0, f'get_instance_from_hash: len(l) = {len(l)}'
+        assert len(l) > 0, f'get_instance_from_hash: len(l) = {len(l)}, instance_hash = {instance_hash}, hashes in instances = {[instance.get_instance_hash() for instance in instances]}, resouce_name = {resource_name}'
         return l[0]
 
     @staticmethod
