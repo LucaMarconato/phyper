@@ -91,6 +91,8 @@ class Parser:
                 dependencies = self._parser._dependencies[resource_name]
                 if k not in dependencies:
                     use_hash = False
+            if v is None:
+                use_hash = False
             if use_hash:
                 h.update(str(k).encode('utf-8'))
                 h.update(str(v).encode('utf-8'))
