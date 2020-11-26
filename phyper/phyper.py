@@ -37,6 +37,7 @@ class Parser:
             hash_folder = os.path.join(self._hashed_resources_folder, resource_name, instance_hash)
         instance_info_file = os.path.join(hash_folder, 'instance_info.json')
         if not os.path.isfile(instance_info_file) and skip_missing:
+            print('instance not found')
             return None
         with open(instance_info_file, 'r') as infile:
             instance_info = json.load(infile)
@@ -45,13 +46,14 @@ class Parser:
         expected = instance.get_hashable_hyperparameters()
         if resource_name is not None:
             expected = expected.intersection(set(instance._parser._dependencies[resource_name]))
-        real = set(instance_info.keys())
-        if expected != real:
-            # print(f'warning: trying to load the instance from disk. {len(expected.symmetric_difference(real))} hyperparamters differ')
-            # print(f'hyperparameters in the set expected but not in the set real: {expected.difference(real)}')
-            # print(f'hyperparameters in the expected but not in the real: {expected.difference(real)}')
-            # print('skipping the instance')
+        real = {k for k, v in instance_info.items() if v is not None}
+        if len(real.difference(expected)) > 0:
+            print(f'hyperparameters in the set real but not in the set expected: {real.difference(expected)}')
+            print('skipping the instance')
             return None
+        if len(expected.difference(real)) > 0:
+            print(f'warning: some parameters are expected but are not found in the loaded instance, they have been set to None')
+            print(f'hyperparameters in the set expected but not in the set real: {expected.difference(real)}')
 
         for k, v in instance_info.items():
             setattr(instance, k, v)
@@ -73,9 +75,12 @@ class Parser:
         d = dict(zip(keys, values))
         return d
 
-    def get_hashable_hyperparameters(self):
+    def get_hashable_hyperparameters(self, only_non_none=False):
         d = self.get_hyperparameters()
-        hashable_hyperparameters = set(type(self).__dict__.keys()).intersection(d.keys())
+        if not only_non_none:
+            hashable_hyperparameters = set(type(self).__dict__.keys()).intersection(d.keys())
+        else:
+            hashable_hyperparameters = {k for k, v in type(self).__dict__.items() if v is not None}.intersection(d.keys())
         return hashable_hyperparameters
 
     def get_instance_hash(self, resource_name: Optional[str] = None):
