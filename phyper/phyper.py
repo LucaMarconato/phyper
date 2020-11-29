@@ -120,6 +120,7 @@ class Parser:
             hash_folder = os.path.join(self._hashed_resources_folder, resource_name, instance_or_resource_hash)
         os.makedirs(hash_folder, exist_ok=True)
         f = os.path.join(hash_folder, 'instance_info.json')
+        # print(f'creating {f}')
 
         keys = instance.get_hashable_hyperparameters()
         d = instance.get_hyperparameters()
@@ -272,6 +273,13 @@ class Parser:
         return l[0]
 
     @staticmethod
+    def describe_instance_from_hash(instance_hash: str, instances: List[Parser], resource_name: Optional[str] = None):
+        instance = Parser.get_instance_from_hash(instance_hash, instances, resource_name)
+        d = instance.get_hyperparameters()
+        from pprint import pprint
+        pprint(d)
+
+    @staticmethod
     def snakemake_helper_get_model_descriptions_paths(instance: Parser):
         assert instance._is_parser is False
         paths = []
@@ -304,7 +312,7 @@ class Parser:
     @staticmethod
     def _snakemake_helper_get_wildcarded_path(path: str, instance: Parser, resource_name: Optional[str] = None):
         h = instance.get_instance_hash(resource_name)
-        assert path.count(h) == 1
+        assert path.count(h) == 1, h
         return path.replace(h, f'{{{resource_name + "_" if resource_name is not None else ""}hash}}')
 
     @staticmethod
